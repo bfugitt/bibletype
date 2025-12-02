@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BibleType v1.0</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #888;
+            --window-bg: #ffffff;
+            --border-color: #000000;
+            --highlight: #000000;
+        }
+
+        body {
+            font-family: 'VT323', monospace;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; 
+            height: 100dvh;
+            overflow: hidden; 
+            box-sizing: border-box;
+            background-image: 
+                linear-gradient(45deg, #aaa 25%, transparent 25%), 
+                linear-gradient(-45deg, #aaa 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #aaa 75%), 
+                linear-gradient(-45deg, transparent 75%, #aaa 75%);
+            background-size: 4px 4px;
+            user-select: none;
+            color: #000;
+        }
+
+        .window {
+            background: var(--window-bg);
+            border: 2px solid var(--border-color);
+            box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
+            width: 95%;
+            max-width: 900px;
+            height: 95dvh; 
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            border-radius: 2px;
+        }
+
+        .title-bar {
+            background: repeating-linear-gradient(
+                0deg,
+                #fff,
+                #fff 2px,
+                #000 2px,
+                #000 4px
+            );
+            height: 32px;
+            min-height: 32px;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+            flex-shrink: 0;
+        }
+
+        .title-box {
+            background: #fff;
+            padding: 0 15px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            border-left: 2px solid #000;
+            border-right: 2px solid #000;
+            letter-spacing: 1px;
+        }
+
+        .content {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- SCREENS --- */
+        .screen { 
+            display: none; 
+            flex-direction: column; 
+            flex: 1; 
+            /* Fix: Allow shrinking to 0 so flex items fit */
+            min-height: 0; 
+            overflow: hidden;
+        }
+        .screen.active { display: flex; }
+
+        /* --- MENUS --- */
+        .menu-grid {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 50px;
+            flex-wrap: wrap;
+        }
+
+        .menu-card {
+            border: 2px solid #000;
+            padding: 20px;
+            text-align: center;
+            width: 200px;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 4px 4px 0 #ccc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .menu-card:hover { transform: translateY(-2px); box-shadow: 4px 6px 0 #ccc; }
+        .menu-card:active { transform: translateY(2px); box-shadow: 2px 2px 0 #ccc; background: #000; color: #fff; }
+        .menu-card:active .icon-box { border-color: #fff; background: #000; }
+        .menu-card:active .icon-inner { background: #fff; }
+
+        .menu-title { font-size: 1.5rem; font-weight: bold; margin-top: 10px; }
+        .menu-desc { font-size: 1rem; font-style: italic; }
+
+        /* Icon Art */
+        .icon-meteor { border-radius: 50%; border: 2px solid #000; width: 40px; height: 40px; margin: 10px; position:relative; }
+        .icon-meteor::after {
+            content:''; position: absolute; top: -10px; right: -10px; width: 10px; height: 10px; 
+            border-left: 2px solid #000; border-bottom: 2px solid #000;
+        }
+        .icon-news { width: 40px; height: 50px; border: 2px solid #000; margin: 5px; background: repeating-linear-gradient(180deg, #fff, #fff 4px, #000 4px, #000 6px); }
+
+        /* --- KEYBOARD UI --- */
+        .keyboard-wrapper {
+            margin-top: auto; 
+            border-top: 2px solid #000;
+            background: #eee;
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            flex-shrink: 0; /* ANCHOR: Never shrink the keyboard */
+            overflow: hidden;
+            /* No min-height here, let content dictate size, but ensure visibility */
+        }
+
+        .keyboard-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            transform-origin: top center; 
+            transition: transform 0.2s;
+        }
+
+        .kb-row { display: flex; gap: 4px; justify-content: center; }
+        .key {
+            width: 35px; height: 35px;
+            border: 1px solid #444;
+            background: #fff;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 1px 1px 0 #000;
+            text-transform: uppercase;
+            font-weight: bold;
+            transition: background 0.1s, transform 0.1s;
+        }
+        .key.wide { width: 50px; }
+        .key.space { width: 250px; }
+        
+        .key.active { background: #000; color: #fff; transform: translateY(2px); box-shadow: none; }
+        .key.target { background: #4444ff; color: #fff; border: 2px solid #000; box-shadow: 0 0 8px #4444ff; } 
+
+        /* --- METEOR GAME --- */
+        .game-area {
+            flex-grow: 1; /* This fills remaining space */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 2px solid #000;
+            position: relative;
+            /* Fix: Allow shrinking to fit */
+            min-height: 0; 
+        }
+
+        #meteor-canvas {
+            background: #fff;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+        .game-hud {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.4rem;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        /* --- NEWSROOM GAME --- */
+        .newsroom-container {
+            flex-grow: 1;
+            border: 2px solid #000;
+            padding: 20px;
+            background: #fff;
+            position: relative;
+            font-size: 1.8rem;
+            line-height: 1.6;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            /* Fix: Allow shrinking */
+            min-height: 0; 
+        }
+        .cursor {
+            border-bottom: 4px solid #000;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+        .char-correct { color: #888; }
+        .char-wrong { background: #000; color: #fff; }
+        .char-pending { color: #000; }
+
+        /* --- UTILS --- */
+        .btn {
+            font-family: 'VT323', monospace;
+            background: #fff; border: 2px solid #000;
+            padding: 5px 15px; font-size: 1.2rem; cursor: pointer;
+            box-shadow: 2px 2px 0 #000;
+        }
+        .btn:active { transform: translate(2px, 2px); box-shadow: none; background: #000; color: #fff; }
+
+    </style>
+</head>
+<body>
+
+<div class="window">
+    <div class="title-bar">
+        <div class="title-box">BibleType v1.0</div>
+    </div>
+    
+    <div class="content">
+        
+        <!-- === MAIN MENU === -->
+        <div id="menu-screen" class="screen active">
+            <div style="text-align: center; margin-top: 20px;">
+                <h1>SELECT PROGRAM</h1>
+            </div>
+            
+            <div class="menu-grid">
+                <div class="menu-card" onclick="startGame('meteor')">
+                    <div class="icon-meteor"></div>
+                    <div class="menu-title">Mana From Heaven</div>
+                    <div class="menu-desc">Arcade Action</div>
+                </div>
+                <div class="menu-card" onclick="startGame('newsroom')">
+                    <div class="icon-news"></div>
+                    <div class="menu-title">Bible Scholar</div>
+                    <div class="menu-desc">Typing Tutor</div>
+                </div>
+            </div>
+
+            <div style="margin-top: auto; text-align: center; padding: 20px;">
+                <p>Keep your fingers on the home row!</p>
+                <p>Leave room for the Holy Spirit!</p>
+            </div>
+        </div>
+
+        <!-- === METEOR SCREEN === -->
+        <div id="meteor-screen" class="screen">
+            <div class="game-hud">
+                <span>Score: <span id="m-score">0</span></span>
+                <span>Lives: <span id="m-lives">[■] [■] [■]</span></span>
+                <button class="btn" onclick="quitGame()">Quit</button>
+            </div>
+            <div class="game-area">
+                <canvas id="meteor-canvas" width="800" height="600"></canvas>
+            </div>
+        </div>
+
+        <!-- === NEWSROOM SCREEN === -->
+        <div id="newsroom-screen" class="screen">
+            <div class="game-hud">
+                <span>WPM: <span id="nr-wpm">0</span></span>
+                <span>Accuracy: <span id="nr-acc">100%</span></span>
+                <button class="btn" onclick="quitGame()">Quit</button>
+            </div>
+            <div id="news-display" class="newsroom-container" onclick="focusNewsroom()">
+                <!-- Text Injected Here -->
+            </div>
+            <div style="text-align: center; font-size: 0.9rem; color: #666; margin-top: 5px;">
+                Type the text exactly as shown.
+            </div>
+        </div>
+
+        <!-- === VIRTUAL KEYBOARD === -->
+        <div id="kb-wrapper" class="keyboard-wrapper" style="display:none;">
+            <div id="kb-container" class="keyboard-container">
+                <div class="kb-row">
+                    <div class="key" id="key-q">Q</div><div class="key" id="key-w">W</div><div class="key" id="key-e">E</div><div class="key" id="key-r">R</div><div class="key" id="key-t">T</div><div class="key" id="key-y">Y</div><div class="key" id="key-u">U</div><div class="key" id="key-i">I</div><div class="key" id="key-o">O</div><div class="key" id="key-p">P</div>
+                </div>
+                <div class="kb-row">
+                    <div class="key" id="key-a">A</div><div class="key" id="key-s">S</div><div class="key" id="key-d">D</div><div class="key" id="key-f">F</div><div class="key" id="key-g">G</div><div class="key" id="key-h">H</div><div class="key" id="key-j">J</div><div class="key" id="key-k">K</div><div class="key" id="key-l">L</div>
+                </div>
+                <div class="kb-row">
+                    <div class="key" id="key-z">Z</div><div class="key" id="key-x">X</div><div class="key" id="key-c">C</div><div class="key" id="key-v">V</div><div class="key" id="key-b">B</div><div class="key" id="key-n">N</div><div class="key" id="key-m">M</div>
+                </div>
+                <div class="kb-row">
+                    <div class="key space" id="key-space">SPACE</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+ const VOCAB_LIST = [
+    // GROUP 1
+    "Abide", "Abraham", "Adam", "Advocate", "Altar", "Amen", "Angel", "Anoint", "Apostle", "Ark", 
+    // GROUP 2
+    "Armor", "Ascension", "Atonement", "Authority", "Baptism", "Beatitudes", "Believe", "Bethlehem", "Bible", "Bishop", 
+    // GROUP 3
+    "Blasphemy", "Blessing", "Blood", "Body", "Bread", "Bride", "Brother", "Calvary", "Camel", "Canaan", 
+    // GROUP 4
+    "Chalice", "Charity", "Cherubim", "Children", "Chosen", "Christ", "Church", "Commandment", "Compassion", "Confess", 
+    // GROUP 5
+    "Conscience", "Cornerstone", "Covenant", "Creation", "Creator", "Cross", "Crown", "Crucify", "Daniel", "David", 
+    // GROUP 6
+    "Deacon", "Deliver", "Demon", "Disciple", "Divine", "Doctrine", "Donkey", "Door", "Dove", "Dust", 
+    // GROUP 7
+    "Earth", "Easter", "Eden", "Egypt", "Elder", "Elijah", "Emmanuel", "Enemy", "Epistle", "Eternal", 
+    // GROUP 8
+    "Eve", "Everlasting", "Evil", "Exalt", "Exodus", "Faith", "Faithful", "Father", "Fear", "Feast", 
+    // GROUP 9
+    "Fellowship", "Fig", "Fire", "Firstborn", "Fish", "Flesh", "Flock", "Flood", "Follow", "Forgive", 
+    // GROUP 10
+    "Foundation", "Fountain", "Frankincense", "Fruit", "Gabriel", "Galilee", "Garden", "Gate", "Gentile", "Gentle", 
+    // GROUP 11
+    "Gift", "Glory", "Goat", "God", "Gold", "Golgotha", "Good", "Gospel", "Grace", "Grain", 
+    // GROUP 12
+    "Grave", "Great", "Guest", "Hallelujah", "Harvest", "Heal", "Heart", "Heaven", "Heir", "Hell", 
+    // GROUP 13
+    "Helmet", "Heritage", "High", "Holy", "Honey", "Honor", "Hope", "Hosanna", "Humble", "Hymn", 
+    // GROUP 14
+    "Idol", "Image", "Incense", "Inheritance", "Iniquity", "Isaac", "Isaiah", "Israel", "Jacob", "James", 
+    // GROUP 15
+    "Jericho", "Jerusalem", "Jesus", "John", "Jordan", "Joseph", "Joy", "Judas", "Judge", "Judgment", 
+    // GROUP 16
+    "Just", "Justice", "Keeper", "Keys", "King", "Kingdom", "Kneel", "Know", "Lamb", "Lamp", 
+    // GROUP 17
+    "Law", "Lazarus", "Leaven", "Leper", "Life", "Light", "Lily", "Lion", "Living", "Loaf", 
+    // GROUP 18
+    "Lord", "Love", "Luke", "Manger", "Manna", "Mark", "Marriage", "Martha", "Martyr", "Mary", 
+    // GROUP 19
+    "Master", "Matthew", "Mediator", "Meek", "Mercy", "Messiah", "Mighty", "Miracle", "Mission", "Moses", 
+    // GROUP 20
+    "Mountain", "Mourn", "Mustard", "Myrrh", "Mystery", "Nail", "Name", "Narrow", "Nazareth", "Neighbor", 
+    // GROUP 21
+    "Net", "New", "Night", "Noah", "Oath", "Obey", "Offering", "Oil", "Olive", "Omega", 
+    // GROUP 22
+    "Orphan", "Palm", "Parable", "Paradise", "Pardon", "Passover", "Pastor", "Patience", "Paul", "Peace", 
+    // GROUP 23
+    "Pearl", "Penance", "Pentecost", "People", "Perfect", "Peter", "Pharisee", "Pilate", "Pillar", "Plague", 
+    // GROUP 24
+    "Poor", "Power", "Praise", "Pray", "Preach", "Priest", "Prince", "Prison", "Promise", "Prophet", 
+    // GROUP 25
+    "Psalm", "Pure", "Purify", "Queen", "Rabbi", "Rain", "Rainbow", "Ransom", "Reap", "Rebuke", 
+    // GROUP 26
+    "Reconcile", "Redeem", "Refuge", "Rejoice", "Religion", "Remnant", "Repent", "Rest", "Resurrection", "Revelation", 
+    // GROUP 27
+    "Reward", "Righteous", "River", "Robe", "Rock", "Rod", "Root", "Ruler", "Sabbath", "Sackcloth", 
+    // GROUP 28
+    "Sacrifice", "Saint", "Salt", "Salvation", "Samaritan", "Samson", "Samuel", "Sanctuary", "Sand", "Sarah", 
+    // GROUP 29
+    "Satan", "Savior", "Scepter", "Scribe", "Scripture", "Sea", "Seal", "Seed", "Seek", "Servant", 
+    // GROUP 30
+    "Sheep", "Shepherd", "Shield", "Ship", "Sign", "Silence", "Silver", "Simon", "Sin", "Sinner", 
+    // GROUP 31
+    "Sister", "Slave", "Sleep", "Soldier", "Solomon", "Son", "Song", "Soul", "Sow", "Spirit", 
+    // GROUP 32
+    "Stable", "Staff", "Star", "Stephen", "Stone", "Storm", "Stranger", "Strength", "Strong", "Suffering", 
+    // GROUP 33
+    "Sun", "Supper", "Sword", "Synagogue", "Tabernacle", "Table", "Talent", "Teach", "Temple", "Temptation", 
+    // GROUP 34
+    "Tent", "Testament", "Testimony", "Thomas", "Thorn", "Throne", "Thunder", "Tithe", "Tomb", "Tongue", 
+    // GROUP 35
+    "Tower", "Tradition", "Transfigure", "Treasure", "Tree", "Trial", "Tribe", "Trumpet", "Trust", "Truth", 
+    // GROUP 36
+    "Unbelief", "Understand", "Unity", "Unleavened", "Valley", "Veil", "Vessel", "Victory", "Vine", "Vineyard", 
+    // GROUP 37
+    "Virgin", "Virtue", "Vision", "Voice", "Vow", "Walk", "Wall", "War", "Wash", "Watch", 
+    // GROUP 38
+    "Water", "Way", "Weak", "Wealth", "Wedding", "Weep", "Well", "Wheat", "Widow", "Wife", 
+    // GROUP 39
+    "Wilderness", "Will", "Wind", "Wine", "Wing", "Wisdom", "Wise", "Witness", "Wolf", "Woman", 
+    // GROUP 40
+    "Womb", "Wonder", "Word", "Work", "World", "Worship", "Worthy", "Wrath", "Yoke", "Zion"
+];
+
+const SENTENCES = [
+    // GROUP 1
+    "If you keep my commandments, you will abide in my love.",
+    "God made a covenant with Abraham to make him a great nation.",
+    "For as in Adam all die, so in Christ all will be made alive.",
+    "We have an Advocate with the Father, Jesus Christ the righteous.",
+    "Abraham built an altar there and called on the name of the Lord.",
+    "The grace of the Lord Jesus be with God's people. Amen.",
+    "An angel of the Lord appeared to them, and the glory of the Lord shone around them.",
+    "You prepare a table before me; you anoint my head with oil.",
+    "Paul, an apostle of Christ Jesus by the will of God.",
+    "Noah built an ark to save his family from the flood.",
+    // GROUP 2
+    "Put on the full armor of God, so that you can take your stand against the devil's schemes.",
+    "After his resurrection, Jesus was taken up into heaven during the Ascension.",
+    "We have received reconciliation through our Lord Jesus Christ, our atonement.",
+    "Jesus called his twelve disciples and gave them authority to drive out impure spirits.",
+    "Go and make disciples of all nations, baptizing them in the name of the Father.",
+    "Blessed are the poor in spirit, is the first of the Beatitudes.",
+    "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish.",
+    "Jesus was born in Bethlehem of Judea in the days of Herod the king.",
+    "All Scripture in the Bible is God-breathed and is useful for teaching.",
+    "If anyone sets his heart on being an overseer, or bishop, he desires a noble task.",
+    // GROUP 3
+    "Anyone who speaks a word against the Son of Man will be forgiven, but blasphemy against the Spirit will not.",
+    "The Lord bless you and keep you; this is the priestly blessing.",
+    "This is my blood of the covenant, which is poured out for many.",
+    "Do you not know that your body is a temple of the Holy Spirit?",
+    "I am the living bread that came down from heaven.",
+    "I saw the Holy City, the new Jerusalem, coming down out of heaven as a bride.",
+    "Whoever does the will of my Father in heaven is my brother and sister and mother.",
+    "They came to a place called Golgotha, which means Calvary, or The Place of the Skull.",
+    "It is easier for a camel to go through the eye of a needle than for someone rich to enter the kingdom of God.",
+    "The Lord gave the land of Canaan to the Israelites as an inheritance.",
+    // GROUP 4
+    "Jesus took the chalice, gave thanks, and offered it to them.",
+    "And now these three remain: faith, hope, and charity. But the greatest of these is charity.",
+    "The Lord is enthroned between the cherubim; let the earth shake.",
+    "Let the little children come to me, and do not hinder them.",
+    "Many are invited, but few are chosen.",
+    "Simon Peter answered, \"You are the Messiah, the Christ, the Son of the living God.\"",
+    "And I tell you that you are Peter, and on this rock I will build my church.",
+    "This is my commandment: Love each other as I have loved you.",
+    "When Jesus saw the crowds, he had compassion on them, because they were harassed and helpless.",
+    "If we confess our sins, he is faithful and just and will forgive us our sins.",
+    // GROUP 5
+    "I strive always to keep my conscience clear before God and man.",
+    "The stone the builders rejected has become the cornerstone.",
+    "I will establish my covenant as an everlasting covenant between me and you.",
+    "For since the creation of the world God's invisible qualities have been clearly seen.",
+    "Remember your Creator in the days of your youth.",
+    "Anyone who does not take up his cross and follow me is not worthy of me.",
+    "Blessed is the one who perseveres under trial because, having stood the test, that person will receive the crown of life.",
+    "They cried out, \"Crucify him! Crucify him!\"",
+    "Daniel was thrown into the lions' den but God shut the mouths of the lions.",
+    "The Lord said to Samuel, \"Rise and anoint him; this is David.\"",
+    // GROUP 6
+    "A deacon must be worthy of respect, sincere, not indulging in much wine.",
+    "The Lord will deliver me from every evil attack and bring me safely to his heavenly kingdom.",
+    "Jesus healed many who had demons and drove out the spirits with a word.",
+    "Whoever does not carry their cross and follow me cannot be my disciple.",
+    "His divine power has given us everything we need for a godly life.",
+    "Watch your life and doctrine closely. Persevere in them.",
+    "Jesus entered Jerusalem riding on a donkey.",
+    "Ask and it will be given to you; seek and you will find; knock and the door will be opened to you.",
+    "As Jesus came up out of the water, he saw the Spirit of God descending like a dove.",
+    "For you are dust, and to dust you shall return.",
+    // GROUP 7
+    "In the beginning God created the heavens and the earth.",
+    "He is not here; he has risen, just as he said on that first Easter morning.",
+    "The Lord God planted a garden in Eden, in the east.",
+    "I am the Lord your God, who brought you out of Egypt, out of the land of slavery.",
+    "Is anyone among you sick? Let them call the elders of the church to pray over them.",
+    "The prophet Elijah was taken up to heaven in a whirlwind.",
+    "The virgin will conceive and give birth to a son, and they will call him Emmanuel.",
+    "Love your enemy and pray for those who persecute you.",
+    "I, Paul, write this epistle to the church in Rome.",
+    "For the wages of sin is death, but the gift of God is eternal life in Christ Jesus our Lord.",
+    // GROUP 8
+    "Adam named his wife Eve, because she would become the mother of all the living.",
+    "The Lord is the everlasting God, the Creator of the ends of the earth.",
+    "Deliver us from evil, for thine is the kingdom, and the power, and the glory.",
+    "Humble yourselves before the Lord, and he will exalt you.",
+    "By faith Moses, when he had grown up, refused to be known as the son of Pharaoh's daughter during the Exodus.",
+    "Now faith is confidence in what we hope for and assurance about what we do not see.",
+    "Well done, good and faithful servant!",
+    "Our Father, who art in heaven, hallowed be thy name.",
+    "The Lord is my light and my salvation—whom shall I fear?",
+    "Let us keep the Festival, or Feast, not with the old bread leavened with malice and wickedness.",
+    // GROUP 9
+    "If we walk in the light, as he is in the light, we have fellowship with one another.",
+    "Jesus saw a fig tree by the road but found nothing on it but leaves.",
+    "He will baptize you with the Holy Spirit and fire.",
+    "She gave birth to her firstborn, a son.",
+    "Come, follow me, and I will make you fishers of men.",
+    "The Word became flesh and made his dwelling among us.",
+    "Be shepherds of God's flock that is under your care.",
+    "The Lord sat enthroned at the flood, and the Lord sits as King forever.",
+    "Whoever serves me must follow me; and where I am, my servant also will be.",
+    "If you forgive other people when they sin against you, your heavenly Father will also forgive you.",
+    // GROUP 10
+    "For no one can lay any foundation other than the one already laid, which is Jesus Christ.",
+    "For with you is the fountain of life; in your light we see light.",
+    "They presented him with gifts of gold, frankincense, and myrrh.",
+    "But the fruit of the Spirit is love, joy, peace, patience, kindness, goodness, faithfulness.",
+    "The angel Gabriel was sent by God to a town in Galilee called Nazareth.",
+    "Jesus went throughout Galilee, teaching in their synagogues.",
+    "Jesus went out with his disciples across the Kidron Valley to a place where there was a garden.",
+    "Enter through the narrow gate.",
+    "There is neither Jew nor Gentile, neither slave nor free, for you are all one in Christ Jesus.",
+    "Take my yoke upon you and learn from me, for I am gentle and humble in heart.",
+    // GROUP 11
+    "Every good and perfect gift is from above.",
+    "The heavens declare the glory of God.",
+    "He will put the sheep on his right and the goats on his left.",
+    "In the beginning was the Word, and the Word was with God.",
+    "The streets of the city were pure gold, like transparent glass.",
+    "They brought Jesus to the place called Golgotha.",
+    "Give thanks to the Lord, for he is good; his love endures forever.",
+    "Go into all the world and preach the gospel to all creation.",
+    "For it is by grace you have been saved, through faith.",
+    "Unless a kernel of grain falls to the ground and dies, it remains only a single seed.",
+    // GROUP 12
+    "Where, O death, is your victory? Where, O grave, is your sting?",
+    "Great is the Lord and most worthy of praise.",
+    "Behold, I stand at the door and knock; if anyone hears my voice and opens the door, I will come in as a guest.",
+    "And I heard a sound from heaven like the roar of rushing waters and like a loud peal of thunder, shouting Hallelujah!",
+    "The harvest is plentiful but the workers are few.",
+    "Lord, I am not worthy that you should enter under my roof, but only say the word and my soul shall be healed.",
+    "Create in me a pure heart, O God, and renew a steadfast spirit within me.",
+    "In my Father's house are many rooms; I am going there to prepare a place for you in heaven.",
+    "Because you are his sons, God sent the Spirit of his Son into our hearts, so you are an heir of God.",
+    "And do not fear those who kill the body but cannot kill the soul. Rather fear him who can destroy both soul and body in hell.",
+    // GROUP 13
+    "Take the helmet of salvation and the sword of the Spirit.",
+    "Your statutes are my heritage forever; they are the joy of my heart.",
+    "The Lord is high above all nations, his glory above the heavens.",
+    "Holy, holy, holy is the Lord God Almighty.",
+    "John's clothes were made of camel's hair, and his food was locusts and wild honey.",
+    "Honor your father and your mother.",
+    "But those who hope in the Lord will renew their strength.",
+    "The crowds shouted, \"Hosanna to the Son of David!\"",
+    "God opposes the proud but shows favor to the humble.",
+    "When they had sung a hymn, they went out to the Mount of Olives.",
+    // GROUP 14
+    "You shall not make for yourself an idol in the form of anything.",
+    "So God created mankind in his own image.",
+    "Another angel, who had a golden censer, came and stood at the altar to offer incense.",
+    "Whatever you do, work at it with all your heart, knowing that you will receive an inheritance from the Lord.",
+    "If you, Lord, kept a record of sins, or iniquity, Lord, who could stand?",
+    "Abraham was the father of Isaac, and Isaac the father of Jacob.",
+    "The prophet Isaiah said, \"Prepare the way for the Lord.\"",
+    "Hear, O Israel: The Lord our God, the Lord is one.",
+    "Jacob had twelve sons, who became the tribes of Israel.",
+    "James, a servant of God and of the Lord Jesus Christ, to the twelve tribes scattered among the nations.",
+    // GROUP 15
+    "By faith the walls of Jericho fell, after the army had marched around them for seven days.",
+    "Pray for the peace of Jerusalem.",
+    "She will give birth to a son, and you are to give him the name Jesus.",
+    "There was a man sent from God whose name was John.",
+    "Jesus was baptized by John in the Jordan River.",
+    "But Joseph said to them, \"Don't be afraid. Am I in the place of God?\"",
+    "The joy of the Lord is your strength.",
+    "Then Judas Iscariot, one of the Twelve, went to the chief priests to betray Jesus.",
+    "Do not judge, or you too will be judged.",
+    "For we must all appear before the judgment seat of Christ.",
+    // GROUP 16
+    "The just shall live by faith.",
+    "Blessed are those who hunger and thirst for justice, for they will be filled.",
+    "The Lord is your keeper; the Lord is your shade at your right hand.",
+    "I will give you the keys of the kingdom of heaven.",
+    "On his robe and on his thigh he has this name written: King of Kings.",
+    "Seek first his kingdom and his righteousness, and all these things will be given to you as well.",
+    "Come, let us bow down in worship, let us kneel before the Lord our Maker.",
+    "Be still, and know that I am God.",
+    "Behold, the Lamb of God, who takes away the sin of the world!",
+    "Your word is a lamp for my feet, a light on my path.",
+    // GROUP 17
+    "For the law was given through Moses; grace and truth came through Jesus Christ.",
+    "Jesus called in a loud voice, \"Lazarus, come out!\"",
+    "A little leaven works through the whole batch of dough.",
+    "A man with leprosy came and knelt before him and said, \"Lord, if you are willing, you can make me clean.\"",
+    "I am the way and the truth and the life.",
+    "You are the light of the world.",
+    "Consider the lilies, how they grow: they neither toil nor spin.",
+    "Be alert and of sober mind. Your enemy the devil prowls around like a roaring lion.",
+    "He is not the God of the dead, but of the living.",
+    "Jesus took the five loaves and the two fish and looked up to heaven.",
+    // GROUP 18
+    "The Lord is my shepherd, I shall not want.",
+    "Love is patient, love is kind.",
+    "Luke the beloved physician sends you his greetings.",
+    "She wrapped him in cloths and placed him in a manger.",
+    "Our ancestors ate the manna in the wilderness.",
+    "This is the beginning of the good news about Jesus the Messiah, written by Mark.",
+    "Let marriage be held in honor among all.",
+    "Martha opened her home to Jesus and served him.",
+    "Stephen was the first martyr to die for his faith in Jesus.",
+    "The angel Gabriel was sent to a virgin named Mary.",
+    // GROUP 19
+    "No one can serve two masters.",
+    "Matthew left his tax collector's booth and followed Jesus.",
+    "For there is one God and one mediator between God and mankind, the man Christ Jesus.",
+    "Blessed are the meek, for they will inherit the earth.",
+    "Blessed are the merciful, for they will be shown mercy.",
+    "The woman said, \"I know that Messiah\" (called Christ) \"is coming.\"",
+    "Who is this King of glory? The Lord strong and mighty.",
+    "Jesus performed his first miracle at the wedding in Cana.",
+    "Go into all the world, which is the great mission given to the disciples.",
+    "The law was given through Moses.",
+    // GROUP 20
+    "You are the light of the world. A town built on a mountain cannot be hidden.",
+    "Blessed are those who mourn, for they will be comforted.",
+    "The kingdom of heaven is like a mustard seed.",
+    "They offered him wine mixed with myrrh, but he did not take it.",
+    "I speak a mystery: We will not all sleep, but we will all be changed.",
+    "They pierced my hands and my feet with nails.",
+    "A good name is more desirable than great riches.",
+    "Small is the gate and narrow the road that leads to life.",
+    "Jesus went to Nazareth, where he had been brought up.",
+    "You shall love your neighbor as yourself.",
+    // GROUP 21
+    "Jesus said to Simon, \"Put out into deep water, and let down the nets for a catch.\"",
+    "Therefore, if anyone is in Christ, the new creation has come.",
+    "In him was life, and that life was the light of all mankind. The light shines in the darkness, and the night has not overcome it.",
+    "By faith Noah, when warned about things not yet seen, built an ark to save his family.",
+    "God made a promise to Abraham with an oath.",
+    "Children, obey your parents in the Lord, for this is right.",
+    "God presented Christ as a sacrifice of atonement, or offering.",
+    "You prepare a table before me; you anoint my head with oil.",
+    "I am like an olive tree flourishing in the house of God.",
+    "I am the Alpha and the Omega, the First and the Last.",
+    // GROUP 22
+    "I will not leave you as orphans; I will come to you.",
+    "They took palm branches and went out to meet him.",
+    "Jesus spoke all these things to the crowd in parables.",
+    "Jesus said to the thief on the cross, \"Truly I tell you, today you will be with me in paradise.\"",
+    "Let the wicked forsake their ways and the unrighteous their thoughts. Let them turn to the Lord, and he will have mercy on them, and to our God, for he will freely pardon.",
+    "Christ, our Passover lamb, has been sacrificed.",
+    "And he gave the apostles, the prophets, the evangelists, the shepherds and teachers, or pastors.",
+    "Be completely humble and gentle; be patient, bearing with one another in love.",
+    "Paul, a servant of Christ Jesus, called to be an apostle.",
+    "Peace I leave with you; my peace I give you.",
+    // GROUP 23
+    "The kingdom of heaven is like a merchant looking for fine pearls.",
+    "Produce fruit in keeping with repentance, or penance.",
+    "When the day of Pentecost came, they were all together in one place.",
+    "You are a chosen people, a royal priesthood, a holy nation.",
+    "Be perfect, therefore, as your heavenly Father is perfect.",
+    "And I tell you that you are Peter, and on this rock I will build my church.",
+    "The Pharisee stood by himself and prayed.",
+    "Pilate asked him, \"Are you the king of the Jews?\"",
+    "The Lord went ahead of them in a pillar of cloud to guide them on their way.",
+    "They have power to turn the waters into blood and to strike the earth with every kind of plague.",
+    // GROUP 24
+    "Blessed are the poor in spirit, for theirs is the kingdom of heaven.",
+    "For the kingdom of God is not a matter of talk but of power.",
+    "Praise the Lord. Praise God in his sanctuary.",
+    "Watch and pray so that you will not fall into temptation.",
+    "Preach the word; be prepared in season and out of season.",
+    "The priest shall make atonement for them, and they will be forgiven.",
+    "For to us a child is born... and he will be called Prince of Peace.",
+    "I was in prison and you came to visit me.",
+    "The Lord is not slow in keeping his promise.",
+    "A prophet is not without honor except in his own town.",
+    // GROUP 25
+    "The Lord is my shepherd, says the Psalm.",
+    "Blessed are the pure in heart, for they will see God.",
+    "He will purify the sons of Levi and refine them like gold and silver.",
+    "The Queen of the South will rise at the judgment.",
+    "They said to him, \"Rabbi\" (which means Teacher), \"where are you staying?\"",
+    "He sends rain on the righteous and the unrighteous.",
+    "I have set my rainbow in the clouds, and it will be the sign of the covenant.",
+    "For even the Son of Man did not come to be served, but to serve, and to give his life as a ransom for many.",
+    "You reap what you sow.",
+    "The Lord said to Satan, \"The Lord rebuke you, Satan!\"",
+    // GROUP 26
+    "Leave your gift there in front of the altar. First go and be reconciled to your brother.",
+    "I know that my Redeemer lives, and that in the end he will stand on the earth.",
+    "God is our refuge and strength, an ever-present help in trouble.",
+    "Rejoice in the Lord always. I will say it again: Rejoice!",
+    "Religion that God our Father accepts as pure and faultless is this: to look after orphans and widows.",
+    "So too, at the present time there is a remnant chosen by grace.",
+    "Repent, for the kingdom of heaven has come near.",
+    "Come to me, all you who are weary and burdened, and I will give you rest.",
+    "I am the resurrection and the life.",
+    "The revelation from Jesus Christ, which God gave him to show his servants what must soon take place.",
+    // GROUP 27
+    "Rejoice and be glad, because great is your reward in heaven.",
+    "The prayer of a righteous person is powerful and effective.",
+    "He will be like a tree planted by the water that sends out its roots by the stream.",
+    "They divided my clothes among them and cast lots for my robe.",
+    "The Lord is my rock, my fortress and my deliverer.",
+    "Even though I walk through the darkest valley, your rod and your staff, they comfort me.",
+    "The Root of Jesse will spring up, one who will arise to rule over the nations.",
+    "But you, Bethlehem... out of you will come for me one who will be ruler over Israel.",
+    "Remember the Sabbath day by keeping it holy.",
+    "He put on sackcloth and ashes to show his sorrow.",
+    // GROUP 28
+    "Present your bodies as a living sacrifice, holy and pleasing to God.",
+    "Greet every saint in Christ Jesus.",
+    "You are the salt of the earth.",
+    "The Lord is my light and my salvation.",
+    "A Samaritan, as he traveled, came where the man was.",
+    "Samson prayed to the Lord, \"Sovereign Lord, remember me.\"",
+    "The boy Samuel ministered before the Lord under Eli.",
+    "Lift up your hands in the sanctuary and praise the Lord.",
+    "I will make your descendants as numerous as the stars in the sky and as the sand on the seashore.",
+    "God said to Abraham, \"As for Sarai your wife... her name will be Sarah.\"",
+    // GROUP 29
+    "Get away from me, Satan! For it is written: 'Worship the Lord your God, and serve him only.'",
+    "Today in the town of David a Savior has been born to you; he is the Messiah, the Lord.",
+    "The scepter will not depart from Judah.",
+    "Ezra was a scribe skilled in the Law of Moses.",
+    "All Scripture is God-breathed.",
+    "He gathered the waters of the sea into jars.",
+    "Do not harm the land or the sea or the trees until we put a seal on the foreheads of the servants of our God.",
+    "The seed is the word of God.",
+    "Seek the Lord while he may be found.",
+    "The greatest among you will be your servant.",
+    // GROUP 30
+    "My sheep listen to my voice; I know them, and they follow me.",
+    "I am the good shepherd. The good shepherd lays down his life for the sheep.",
+    "Take up the shield of faith, with which you can extinguish all the flaming arrows of the evil one.",
+    "They got into a ship and started across the sea to Capernaum.",
+    "Therefore the Lord himself will give you a sign: The virgin will conceive and give birth to a son.",
+    "There was silence in heaven for about half an hour.",
+    "Judas agreed to betray Jesus for thirty pieces of silver.",
+    "Simon Peter answered, \"You are the Messiah, the Son of the living God.\"",
+    "For all have sinned and fall short of the glory of God.",
+    "God has mercy on me, a sinner.",
+    // GROUP 31
+    "Mary, the sister of Martha, sat at the Lord's feet listening to what he said.",
+    "There is no longer slave or free, for all are one in Christ Jesus.",
+    "He found them sleeping for sorrow.",
+    "Endure hardship with us like a good soldier of Christ Jesus.",
+    "King Solomon was greater in riches and wisdom than all the other kings of the earth.",
+    "This is my beloved Son, in whom I am well pleased.",
+    "I will sing a new song to the Lord.",
+    "What good will it be for someone to gain the whole world, yet forfeit their soul?",
+    "A farmer went out to sow his seed.",
+    "God is spirit, and his worshipers must worship in the Spirit and in truth.",
+    // GROUP 32
+    "She gave birth to her firstborn, a son... because there was no guest room available for them, so they used a stable.",
+    "Your rod and your staff, they comfort me.",
+    "They saw the star and they rejoiced with exceeding great joy.",
+    "Stephen, full of the Holy Spirit, looked up to heaven and saw the glory of God.",
+    "Let him who is without sin cast the first stone.",
+    "He got up, rebuked the wind and said to the waves, \"Quiet! Be still!\" and the storm subsided.",
+    "I was a stranger and you welcomed me.",
+    "The Lord is my strength and my shield.",
+    "Be strong and courageous. Do not be afraid.",
+    "Christ suffered for you, leaving you an example, that you should follow in his steps of suffering.",
+    // GROUP 33
+    "The sun will be turned to darkness and the moon to blood.",
+    "A certain man was preparing a great supper and invited many guests.",
+    "For the word of God is alive and active. Sharper than any double-edged sword.",
+    "He went into the synagogue on the Sabbath day.",
+    "Moses set up the tabernacle according to the pattern shown him on the mountain.",
+    "You prepare a table before me in the presence of my enemies.",
+    "To one he gave five talents, to another two, to another one.",
+    "Lord, teach us to pray.",
+    "Destroy this temple, and I will raise it again in three days.",
+    "Lead us not into temptation, but deliver us from evil.",
+    // GROUP 34
+    "Enlarge the place of your tent, stretch your tent curtains wide.",
+    "This cup is the new testament in my blood.",
+    "Do not be ashamed of the testimony about our Lord.",
+    "Doubting Thomas said, \"Unless I see the nail marks in his hands, I will not believe.\"",
+    "They twisted together a crown of thorns and set it on his head.",
+    "I saw the Lord, high and exalted, seated on a throne.",
+    "The voice of the Lord is like thunder.",
+    "Bring the whole tithe into the storehouse.",
+    "They found the stone rolled away from the tomb.",
+    "Every tongue shall confess that Jesus Christ is Lord.",
+    // GROUP 35
+    "The Lord is a strong tower against the enemy.",
+    "You have let go of the commands of God and are holding on to human tradition.",
+    "There he was transfigured before them. His face shone like the sun.",
+    "For where your treasure is, there your heart will be also.",
+    "Blessed is the one who does not walk in step with the wicked... but is like a tree planted by streams of water.",
+    "Consider it pure joy, my brothers and sisters, whenever you face trials of many kinds.",
+    "Judah is a lion's whelp; from the prey, my son, thou art gone up, representing the tribe.",
+    "For the Lord himself will come down from heaven... with the trumpet call of God.",
+    "Trust in the Lord with all your heart.",
+    "Then you will know the truth, and the truth will set you free.",
+    // GROUP 36
+    "Immediately the boy's father exclaimed, \"I do believe; help me overcome my unbelief!\"",
+    "Give me understanding, so that I may keep your law and obey it with all my heart.",
+    "How good and pleasant it is when God's people live together in unity!",
+    "Celebrate the Festival of Unleavened Bread.",
+    "Even though I walk through the valley of the shadow of death, I will fear no evil.",
+    "The curtain, or veil, of the temple was torn in two from top to bottom.",
+    "We have this treasure in jars of clay, or earthen vessels.",
+    "But thanks be to God! He gives us the victory through our Lord Jesus Christ.",
+    "I am the vine; you are the branches.",
+    "The kingdom of heaven is like a landowner who went out early in the morning to hire workers for his vineyard.",
+    // GROUP 37
+    "The virgin will conceive and give birth to a son.",
+    "Add to your faith virtue; and to virtue knowledge.",
+    "In a vision he saw an angel of God coming to him.",
+    "My sheep listen to my voice; I know them, and they follow me.",
+    "I have made a vow to the Lord that I cannot break.",
+    "Walk in the manner worthy of the calling to which you have been called.",
+    "The wall of the city had twelve foundations, and on them were the names of the twelve apostles.",
+    "There was war in heaven. Michael and his angels fought against the dragon.",
+    "Wash me, and I shall be whiter than snow.",
+    "Watch and pray so that you will not fall into temptation.",
+    // GROUP 38
+    "He leads me beside quiet waters.",
+    "Jesus answered, \"I am the way and the truth and the life.\"",
+    "The spirit is willing, but the flesh is weak.",
+    "A good man leaves an inheritance for his children's children, or wealth.",
+    "The kingdom of heaven is like a king who prepared a wedding banquet for his son.",
+    "Rejoice with those who rejoice; weep with those who weep.",
+    "Jesus sat down by the well.",
+    "Gather the wheat into my barn.",
+    "Jesus saw a poor widow put in two very small copper coins.",
+    "Husbands, love your wives, just as Christ loved the church.",
+    // GROUP 39
+    "The Spirit sent him out into the wilderness.",
+    "Thy kingdom come, thy will be done.",
+    "The wind blows wherever it pleases.",
+    "Do not get drunk on wine, which leads to debauchery. Instead, be filled with the Spirit.",
+    "He will cover you with his feathers, and under his wings you will find refuge.",
+    "The fear of the Lord is the beginning of wisdom.",
+    "The wise man built his house on the rock.",
+    "You will be my witnesses in Jerusalem, and in all Judea and Samaria.",
+    "I am sending you out like sheep among wolves.",
+    "Blessed are you among women, and blessed is the fruit of your womb.",
+    // GROUP 40
+    "Blessed is the fruit of your womb, Jesus.",
+    "For to us a child is born... and he will be called Wonderful Counselor.",
+    "In the beginning was the Word, and the Word was with God.",
+    "Faith without works is dead.",
+    "For God so loved the world that he gave his one and only Son.",
+    "Worship the Lord in the splendor of his holiness.",
+    "Worthy is the Lamb, who was slain, to receive power and wealth and wisdom and strength.",
+    "For the wrath of God is revealed from heaven against all ungodliness.",
+    "Take my yoke upon you and learn from me.",
+    "See, your king comes to you, righteous and victorious, lowly and riding on a donkey, to Zion."
+];
+
+    // --- STATE ---
+    let state = {
+        mode: null,
+        active: false,
+        // Meteor vars
+        meteors: [],
+        meteorScore: 0,
+        meteorLives: 3,
+        meteorSpawnRate: 3000, 
+        lastSpawn: 0,
+        meteorTarget: null,
+        meteorInput: "",
+        meteorSpeedMod: 0, 
+        
+        // Newsroom vars
+        newsText: "",
+        newsIndex: 0,
+        newsMistakes: 0,
+        newsStartTime: 0,
+        newsStarted: false
+    };
+
+    let gameLoopId;
+
+    // --- INIT ---
+    function startGame(mode) {
+        state.mode = mode;
+        state.active = true;
+        
+        document.getElementById('menu-screen').classList.remove('active');
+        document.getElementById('kb-wrapper').style.display = 'flex';
+        
+        // DELAY RESIZE to allow flexbox to settle
+        setTimeout(resizeKeyboard, 50);
+
+        if (mode === 'meteor') {
+            document.getElementById('meteor-screen').classList.add('active');
+            initMeteor();
+        } else {
+            document.getElementById('newsroom-screen').classList.add('active');
+            initNewsroom();
+        }
+
+        window.addEventListener('keydown', handleKey);
+        window.addEventListener('keyup', handleKeyUp);
+        window.addEventListener('resize', resizeKeyboard);
+    }
+
+    function quitGame() {
+        state.active = false;
+        cancelAnimationFrame(gameLoopId);
+        window.removeEventListener('keydown', handleKey);
+        window.removeEventListener('keyup', handleKeyUp);
+        window.removeEventListener('resize', resizeKeyboard);
+        
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('menu-screen').classList.add('active');
+        document.getElementById('kb-wrapper').style.display = 'none';
+    }
+
+    // --- RESPONSIVE KEYBOARD ---
+    function resizeKeyboard() {
+        const wrapper = document.getElementById('kb-wrapper');
+        const container = document.getElementById('kb-container');
+        if (!wrapper || !container) return;
+
+        // Reset transform to get accurate measurements
+        container.style.transform = 'none';
+        
+        const availWidth = wrapper.clientWidth - 20; // Padding
+        const requiredWidth = 600; // Approx width of keyboard
+        
+        // Calculate scale needed to fit
+        let scale = Math.min(1.3, availWidth / requiredWidth); // Max 1.3 zoom
+        if (scale < 0.5) scale = 0.5; // Min size
+
+        container.style.transform = `scale(${scale})`;
+    }
+
+    // --- KEYBOARD VISUALS ---
+    function highlightKey(key, type) {
+        let k = key.toLowerCase();
+        if (k === ' ') k = 'space';
+        if (k === '.') k = 'period'; 
+        
+        const el = document.getElementById('key-' + k);
+        if (el) el.classList.add(type);
+    }
+
+    function unhighlightKey(key, type) {
+        let k = key.toLowerCase();
+        if (k === ' ') k = 'space';
+        const el = document.getElementById('key-' + k);
+        if (el) el.classList.remove(type);
+    }
+
+    function clearTargets() {
+        document.querySelectorAll('.key.target').forEach(el => el.classList.remove('target'));
+    }
+
+    function handleKey(e) {
+        if (!state.active) return;
+        if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt') return;
+
+        highlightKey(e.key, 'active');
+
+        if (state.mode === 'meteor') handleMeteorInput(e.key);
+        else handleNewsroomInput(e.key);
+    }
+
+    function handleKeyUp(e) {
+        unhighlightKey(e.key, 'active');
+    }
+
+    // ==========================================
+    // === METEOR ZAP LOGIC ===
+    // ==========================================
+    function initMeteor() {
+        state.meteors = [];
+        state.meteorScore = 0;
+        state.meteorLives = 3;
+        state.meteorTarget = null;
+        state.meteorInput = "";
+        state.lastSpawn = 0;
+        state.meteorSpeedMod = 0; 
+        
+        updateMeteorHUD();
+        clearTargets();
+        gameLoopId = requestAnimationFrame(meteorLoop);
+    }
+
+    function meteorLoop(timestamp) {
+        if (!state.active) return;
+
+        // Resize Canvas to fit container dynamically
+        const cvs = document.getElementById('meteor-canvas');
+        const parent = cvs.parentElement;
+        if (cvs.width !== parent.clientWidth || cvs.height !== parent.clientHeight) {
+            cvs.width = parent.clientWidth;
+            cvs.height = parent.clientHeight;
+            resizeKeyboard(); // Recalculate keyboard if game area shifts
+        }
+
+        const ctx = cvs.getContext('2d');
+        const width = cvs.width;
+        const height = cvs.height;
+
+        // Clear
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, width, height);
+
+        // Spawn
+        if (timestamp - state.lastSpawn > state.meteorSpawnRate) {
+            spawnMeteor(width);
+            state.lastSpawn = timestamp;
+        }
+
+        // --- UPDATE & DRAW ---
+        ctx.font = '24px VT323';
+        
+        // Highlight logic for Meteor
+        clearTargets();
+        if (state.meteorTarget !== null && state.meteors[state.meteorTarget]) {
+            let m = state.meteors[state.meteorTarget];
+            let nextChar = m.word[state.meteorInput.length];
+            if(nextChar) highlightKey(nextChar, 'target');
+        }
+
+        for (let i = state.meteors.length - 1; i >= 0; i--) {
+            let m = state.meteors[i];
+            
+            let currentSpeed = Math.max(0.1, (0.2 + (state.meteorScore * 0.01)) - state.meteorSpeedMod);
+            m.y += currentSpeed;
+
+            if (state.meteorSpeedMod > 0) state.meteorSpeedMod -= 0.0005;
+
+            // Draw Line
+            ctx.beginPath();
+            ctx.moveTo(m.x + 20, m.y); 
+            ctx.lineTo(m.x + 20, m.y - 10);
+            ctx.strokeStyle = '#000';
+            ctx.stroke();
+
+            // Draw Word
+            if (state.meteorTarget === i) {
+                let typed = state.meteorInput;
+                let remain = m.word.substring(typed.length);
+                let wTyped = ctx.measureText(typed).width;
+                
+                // Active typing highlight
+                ctx.fillStyle = '#ddd';
+                ctx.fillRect(m.x - 2, m.y - 20, ctx.measureText(m.word).width + 4, 24);
+
+                ctx.fillStyle = '#000088'; 
+                ctx.fillText(typed, m.x, m.y); 
+                ctx.fillStyle = '#555';
+                ctx.fillText(remain, m.x + wTyped, m.y); 
+            } else {
+                ctx.fillStyle = '#000';
+                ctx.fillText(m.word, m.x, m.y);
+            }
+
+            // Hit Bottom?
+            if (m.y > height) {
+                state.meteors.splice(i, 1);
+                state.meteorLives--;
+                
+                if (state.meteorTarget === i) {
+                    state.meteorTarget = null;
+                    state.meteorInput = "";
+                } else if (state.meteorTarget > i) {
+                    state.meteorTarget--; 
+                }
+
+                state.meteorSpeedMod = 0.3; 
+                
+                updateMeteorHUD();
+                if (state.meteorLives <= 0) {
+                    alert("Game Over! Score: " + state.meteorScore);
+                    quitGame();
+                    return;
+                }
+            }
+        }
+
+        // Draw City
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, height - 10, width, 10);
+
+        gameLoopId = requestAnimationFrame(meteorLoop);
+    }
+
+    function spawnMeteor(w) {
+        const word = VOCAB_LIST[Math.floor(Math.random() * VOCAB_LIST.length)];
+        state.meteors.push({
+            word: word,
+            x: Math.random() * (w - 150) + 20, 
+            y: -20
+        });
+    }
+
+    function handleMeteorInput(key) {
+        if (state.meteorTarget !== null) {
+            let m = state.meteors[state.meteorTarget];
+            if (!m) { state.meteorTarget = null; return; } 
+
+            let nextChar = m.word[state.meteorInput.length];
+            
+            if (key.toLowerCase() === nextChar.toLowerCase()) {
+                state.meteorInput += nextChar;
+                if (state.meteorInput.length === m.word.length) {
+                    state.meteors.splice(state.meteorTarget, 1); // Zap
+                    state.meteorScore += 10;
+                    state.meteorTarget = null;
+                    state.meteorInput = "";
+                    updateMeteorHUD();
+                }
+            } 
+        } 
+        else {
+            let candidates = [];
+            state.meteors.forEach((m, idx) => {
+                if (m.word.toLowerCase().startsWith(key.toLowerCase())) {
+                    candidates.push({idx: idx, y: m.y});
+                }
+            });
+
+            if (candidates.length > 0) {
+                candidates.sort((a,b) => b.y - a.y);
+                state.meteorTarget = candidates[0].idx;
+                state.meteorInput = key.toLowerCase();
+                
+                if (state.meteors[state.meteorTarget].word.length === 1) {
+                    state.meteors.splice(state.meteorTarget, 1);
+                    state.meteorScore += 10;
+                    state.meteorTarget = null;
+                    state.meteorInput = "";
+                    updateMeteorHUD();
+                }
+            }
+        }
+    }
+
+    function updateMeteorHUD() {
+        document.getElementById('m-score').innerText = state.meteorScore;
+        let lifeStr = "";
+        for(let i=0; i<3; i++) {
+            lifeStr += (i < state.meteorLives) ? "[■] " : "[ ] ";
+        }
+        document.getElementById('m-lives').innerText = lifeStr;
+    }
+
+
+    // ==========================================
+    // === NEWSROOM LOGIC ===
+    // ==========================================
+    function initNewsroom() {
+        state.newsText = SENTENCES[Math.floor(Math.random() * SENTENCES.length)];
+        state.newsIndex = 0;
+        state.newsMistakes = 0;
+        state.newsStarted = false;
+        state.newsStartTime = 0;
+        
+        renderNewsroom();
+        clearTargets();
+        highlightTargetKey();
+        
+        document.getElementById('nr-wpm').innerText = 0;
+        document.getElementById('nr-acc').innerText = "100%";
+    }
+
+    function renderNewsroom() {
+        const display = document.getElementById('news-display');
+        let html = "";
+        
+        for (let i = 0; i < state.newsText.length; i++) {
+            const char = state.newsText[i];
+            if (i < state.newsIndex) {
+                html += `<span class="char-correct">${char}</span>`;
+            } else if (i === state.newsIndex) {
+                html += `<span class="char-pending cursor">${char}</span>`;
+            } else {
+                html += `<span class="char-pending">${char}</span>`;
+            }
+        }
+        display.innerHTML = html;
+    }
+
+    function highlightTargetKey() {
+        if (state.newsIndex < state.newsText.length) {
+            let char = state.newsText[state.newsIndex];
+            highlightKey(char, 'target');
+        }
+    }
+
+    function handleNewsroomInput(key) {
+        if (key.length > 1 && key !== "Enter") return; 
+
+        if (!state.newsStarted) {
+            state.newsStarted = true;
+            state.newsStartTime = Date.now();
+        }
+
+        const requiredChar = state.newsText[state.newsIndex];
+
+        if (key.toLowerCase() === requiredChar.toLowerCase()) {
+            clearTargets();
+            state.newsIndex++;
+            
+            if (state.newsIndex >= state.newsText.length) {
+                finishNewsroom();
+            } else {
+                renderNewsroom();
+                highlightTargetKey();
+            }
+        } else {
+            state.newsMistakes++;
+        }
+        updateNewsStats();
+    }
+
+    function updateNewsStats() {
+        if (!state.newsStarted) return;
+        const now = Date.now();
+        const mins = (now - state.newsStartTime) / 60000;
+        const words = state.newsIndex / 5;
+        const wpm = Math.round(words / mins) || 0;
+        const totalKeystrokes = state.newsIndex + state.newsMistakes;
+        const acc = totalKeystrokes === 0 ? 100 : Math.round((state.newsIndex / totalKeystrokes) * 100);
+
+        document.getElementById('nr-wpm').innerText = wpm;
+        document.getElementById('nr-acc').innerText = acc + "%";
+    }
+
+    function finishNewsroom() {
+        alert("Story Filed!\nAccuracy: " + document.getElementById('nr-acc').innerText + "\nWPM: " + document.getElementById('nr-wpm').innerText);
+        initNewsroom();
+    }
+
+    function focusNewsroom() { }
+
+</script>
+</body>
+</html>
